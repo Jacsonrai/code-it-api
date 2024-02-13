@@ -1,11 +1,14 @@
 const express=require('express')
 const Blog=require('./models/blog-model/blogmodel')
+const User=require('./models/user-model/usermodel')
 const{body,validationResult, param}=require('express-validator')
 const cors=require('cors')
 const mongoose=require('mongoose')
+const bcrypt=require("bcryptjs")
 
 const app=express()
 const PORT=8000
+const jwt=require("jsonwebtoken")
 
 app.use(express.json())
 app.use(express.urlencoded({extended:false}))
@@ -92,7 +95,68 @@ async(req,res)=>{
         res.status(500).json({message:err.message})
     }
 })
+async function initial(){
+    const initialUserData={
+        email:"test@gmail.com",
+        password:bcrypt.hashSync("password")
+    }
+   const existedUser=await User.findOne({email:initialUserData.email})
+   if(!existedUser){
+    const user=await User.create(initialUserData)
+    console.log(user,'user created')
+   }
+  
+ 
+}
+app.post('/auth/login',[
+body('email').notEmpty().withMessage('email is required.'),
+body('password').notEmpty().withMessage('password is required.'),
+],async(req,res)=>{
+    const errors=validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({errors:errors.array()})
+    }
+    try{
+        const existedUser=await User.findOne({email:req.body.email})
+        if(!existedUser){
+            return res.status(404).json({
+                status: 404,
+                message: "User not found",
+            })
+        }
+        const hashPassword= await existedUser?.password
+        const isPasswordMatch=await bcrypt.compare(req.body.password,hashPassword)
+        if(!isPasswordMatch)
+        {
+            return res.status(404).json({
+                status: 404,
+                message: "Password not found",
+            })
+        }
+        const token = jwt.sign(
+            { _id: existedUser?._id, email: existedUser?.email },
+            "YOUR_SECRET",
+            {
+              expiresIn: "1d",
+            }
+          );
+        const data={
+            email:existedUser.email,
+            token:token
+        }
+        return res.status(200).json({
+            message:"logined successfully",
+            status:200,
+            data:data
+        })
 
+       }catch(err){
+        res.status(500).json({message:err.message})
+       }
+   
+
+})
+initial()
 mongoose
 .connect('mongodb+srv://admin:spaceagent123@cluster0.blokf.mongodb.net/Blog?retryWrites=true&w=majority')
 .then(()=>{
