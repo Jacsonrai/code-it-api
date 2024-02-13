@@ -36,7 +36,7 @@ app.delete('/blog/:id',async(req,res)=>{
         if(!blog){
             return res.status(404).json({data:[],message:`no blog found.with id ${id}`})
          }
-        res.status(200).json({data:blog,message:"blog datad successfully deleted"})
+        res.status(200).json({data:blog,message:"blog datad successfully deleted",status:200})
      }
      catch(err){
          res.status(500).json({message:err.message})
