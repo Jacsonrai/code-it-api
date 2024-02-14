@@ -62,13 +62,23 @@ body('description').notEmpty().withMessage('Description is required.')
 ],async(req,res)=>{
     try{
         const {id}=req.params
-        const blog= await Blog.findByIdAndUpdate(id,req.body);
+        const{formData}=req.body
+        console.log(id,'ids')
+        console.log(req.body.formData,'nlog')
+        const blog=await Blog.updateOne({_id:id},{
+            $set:{
+                "title":formData.title,
+                "image":formData.image,
+                "description":formData.description
+            }
+        })
+        console.log(blog,'update')
         if(!blog){
 
            return res.status(404).json({data:[],message:`no blog found.with id ${id}`})
         }
-        const updated=await Blog.findById(id)
-        res.status(200).json({data:updated,message:"blog data updated successfully",status:200})
+        // const updated=await Blog.findById(id)
+        res.status(200).json({data:blog,message:"blog data updated successfully",status:200})
      }
      catch(err){
          res.status(500).json({message:err.message})
