@@ -63,8 +63,6 @@ body('description').notEmpty().withMessage('Description is required.')
     try{
         const {id}=req.params
         const{formData}=req.body
-        console.log(id,'ids')
-        console.log(req.body.formData,'nlog')
         const blog=await Blog.updateOne({_id:id},{
             $set:{
                 "title":formData.title,
@@ -122,6 +120,36 @@ async function initial(){
   
  
 }
+app.post('/auth/register',[
+    body('email').notEmpty().withMessage('email is required.'),
+    body('password').notEmpty().withMessage('password is required.'),
+],async(req,res)=>{
+    const errors=validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({errors:errors.array()})
+    }
+    try{
+        const existedEmail=await User.findOne({email:req.body.email})
+        if(existedEmail){
+            return res.status(404).json({
+                status: 404,
+                message: "email already taken",
+            })
+        }
+        const hashPassword=await bcrypt.hash(req.body.password,10)
+       const data={
+        email:req.body.email,
+        password:hashPassword
+       }
+        const user=await User.create(data)
+        res.status(200).json({data:user,message:"user register successfully",status:200})
+    }
+    catch(err){
+        res.status(500).json({message:err.message})
+       }
+})
+
+
 app.post('/auth/login',[
 body('email').notEmpty().withMessage('email is required.'),
 body('password').notEmpty().withMessage('password is required.'),
