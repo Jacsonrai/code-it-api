@@ -9,6 +9,7 @@ const bcrypt=require("bcryptjs")
 const app=express()
 const PORT=8000
 const jwt=require("jsonwebtoken")
+const Category = require('./models/category-model/categorymodel')
 
 app.use(express.json())
 app.use(express.urlencoded({extended:false}))
@@ -20,80 +21,83 @@ app.use(cors({
 app.get("/",(req,res)=>{
     res.send('Hello NODE API')
 })
-app.get("/blog",async(req,res)=>{
+app.get("/news",async(req,res)=>{
     try{
-       const blog= await Blog.find({});
-       res.status(200).json({data:blog,message:"blog data successfully fetched",status:200})
+       const blog= await Blog.find({}).populate('category');
+       res.status(200).json({data:blog,message:"news data successfully fetched",status:200})
     }
     catch(err){
         res.status(500).json({message:err.message})
     }
 })
-app.delete('/blog/:id',async(req,res)=>{
+app.delete('/news/:id',async(req,res)=>{
     try{
         const {id}=req.params
         const blog= await Blog.findByIdAndDelete(id);
         if(!blog){
             return res.status(404).json({data:[],message:`no blog found.with id ${id}`})
          }
-        res.status(200).json({data:blog,message:"blog datad successfully deleted",status:200})
+        res.status(200).json({data:blog,message:"news data successfully deleted",status:200})
      }
      catch(err){
          res.status(500).json({message:err.message})
      }
 })
-app.get('/blog/:id',async(req,res)=>{
+app.get('/news/:id',async(req,res)=>{
     try{
         const {id}=req.params
-        const blog= await Blog.findById(id);
+        const blog= await Blog.findById(id).populate('category');
         if(!blog){
-            return res.status(404).json({data:[],message:`no blog found with id ${id}`})
+            return res.status(404).json({data:[],message:`no newsfound with id ${id}`})
          }
-         res.status(200).json({data:blog,message:"blog data successfully fetched"})
+         res.status(200).json({data:blog,message:"news data successfully fetched"})
      }
      catch(err){
          res.status(500).json({message:err.message})
      }
 })
-app.put('/blog/:id',[
+app.put('/news/:id',[
 body('title').notEmpty().withMessage('Title is required.'),
 body('image').notEmpty().withMessage('Image is required.'),
-body('description').notEmpty().withMessage('Description is required.')
+body('description').notEmpty().withMessage('Description is required.'),
+body('category').notEmpty().withMessage('category id is required.')
 ],async(req,res)=>{
+    const errors=validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({errors:errors.array()})
+    }
     try{
         const {id}=req.params
-        const{formData}=req.body
         const blog=await Blog.updateOne({_id:id},{
             $set:{
-                "title":formData.title,
-                "image":formData.image,
-                "description":formData.description
+                "title":req.body.title,
+                "image":req.body.image,
+                "description":req.body.description,
+                "category":req.body.category
             }
         })
-        console.log(blog,'update')
         if(!blog){
-
-           return res.status(404).json({data:[],message:`no blog found.with id ${id}`})
+         return res.status(404).json({data:[],message:`no blog found.with id ${id}`})
         }
-        // const updated=await Blog.findById(id)
-        res.status(200).json({data:blog,message:"blog data updated successfully",status:200})
+        res.status(200).json({data:blog,message:"news data updated successfully",status:200})
      }
      catch(err){
          res.status(500).json({message:err.message})
      }
 })
 
-app.post('/blog-create',
+app.post('/news-create',
 [
 body('title').notEmpty().withMessage('Title is required.'),
 body('image').notEmpty().withMessage('Image is required.'),
-body('description').notEmpty().withMessage('Description is required.')],
+body('description').notEmpty().withMessage('Description is required.'),
+body('category').notEmpty().withMessage('Category id is required')],
+
 async(req,res)=>{
     const errors=validationResult(req)
     if(!errors.isEmpty()){
         return res.status(400).json({errors:errors.array()})
     }
-   
     try{
         const blog=await Blog.create(req.body)
         res.status(200).json({
@@ -107,6 +111,57 @@ async(req,res)=>{
         res.status(500).json({message:err.message})
     }
 })
+//category api
+app.post('/category',[
+    body('name').notEmpty().withMessage('category name is required.'),
+    body('slug').notEmpty().withMessage('category slug is required.')
+],
+async(req,res)=>{
+    const errors=validationResult(req)
+    if(!errors.isEmpty()){
+        return res.status(400).json({errors:errors.array()})
+    }
+    const existedCategory=await Category.findOne({slug:req.body.slug})
+    if(existedCategory){
+        return res.status(404).json({
+            status:404,
+            message:"slug already existed"})
+    }
+    try{
+        const category= await Category.create(req.body)
+        res.status(200).json({
+            message:"blog created successfully",
+            status:200,
+            data:category
+        })
+
+    }catch(err){
+        res.status(500).json({message:err.message})
+    }
+})
+app.get("/category",async(req,res)=>{
+    try{
+       const category= await Category.find({});
+       res.status(200).json({data:category,message:"Category data successfully fetched",status:200})
+    }
+    catch(err){
+        res.status(500).json({message:err.message})
+    }
+})
+app.delete("/category/:id",async(req,res)=>{
+    try{
+        const {id}=req.params
+        const category= await Category.findByIdAndDelete(id);
+        if(!category){
+            return res.status(404).json({data:[],message:`no category found.with id ${id}`})
+         }
+        res.status(200).json({data:category,message:"category data successfully deleted",status:200})
+    }catch(err){
+        res.status(500).json({message:err.message})  
+    }
+})
+
+
 async function initial(){
     const initialUserData={
         email:"test@gmail.com",
